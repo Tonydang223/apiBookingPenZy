@@ -6,7 +6,10 @@ const authContr = require('../controller/authController')
 
 router.post('/register',authContr.signUp);
 router.post('/login',authContr.login);
-router.post('/refreshToken',authContr.generatorAccessToken)
+router.post('/logout',authContr.logout);
+router.post('/refreshToken',authContr.generatorAccessToken);
+router.post('/resetPassword',authContr.resetPassword);
+
 
 
 

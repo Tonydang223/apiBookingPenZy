@@ -29,6 +29,14 @@ const  authController ={
            next(error)
        }
     },
+    logout: async function(req,res,next){
+        try {
+            await res.clearCookie("refreshToken",{path:"/auth/refreshToken"})
+            return res.status(200).send({message:"Log out successfully!!!"})
+        } catch (error) {
+            return res.status(500).send({message:"Log out fail!!!"})
+        }
+    },
     login: async function(req,res,next){
        try {
         const userLogin  = req.body
@@ -68,7 +76,7 @@ const  authController ={
     generatorAccessToken: async function(req,res,next){
          const token = req.cookies.refreshToken
          console.log(token)
-         if(!token) return res.status(401).send({message:"Unauthorization"});
+         if(!token) return res.status(401).send({message:"Please log in to access"});
         jwt.verify(token,process.env.REFRESH_TOKEN_SECRET, async function(error,data){
             if(error) return res.status(403).send({message:error})
             const user = await User.findOne({_id:data.id}).select("-password")
@@ -82,8 +90,24 @@ const  authController ={
                 user,
                 status:200
             })
-            // next()
+            next()
         })
+    },
+    resetPassword:async function(req,res,next){
+        try {
+            const {passwordReset,user} = req.body
+            
+            if(!passwordReset || passwordReset.length > 8) return res.status(400).send({message:"Please fill in a new password or password less than and equal to 8!"})
+            const salt = await bcrypt.genSalt(10)
+            const hashPasswordReset = await bcrypt.hash(passwordReset,salt)
+            
+            await User.findByIdAndUpdate({_id:user.id},{$set:{password:hashPasswordReset}},{new:true})
+    
+            res.status(200).send({message:"You updated your password successfully!"})
+        } catch (error) {
+            return res.status(500).send({message:error.message})
+        }
+
     }
 }
 
