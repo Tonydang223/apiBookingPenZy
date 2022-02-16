@@ -6,14 +6,16 @@ const UserModel = new Schema({
         type:String,
         required:true,
         minlength:6,
-        maxlength:100
+        maxlength:100,
+        trim:true
     },
     email:{
          type:String,
          required:true,
          unique:true,
          minlength:6,
-         maxlength:200
+         maxlength:200,
+         trim:true
     },
     password:{
         type:String,
@@ -30,6 +32,16 @@ const UserModel = new Schema({
     role:{
         type:Number,
         default:0
+    },
+    isVerified:{
+        type:Boolean
+    },
+    emailToken:{
+        type:String
+    },
+    avatar:{
+        type:String,
+        default:'https://res.cloudinary.com/dipro/image/upload/v1645001565/avatar/default-avatar-profile-icon-vector-social-media-user-portrait-176256935_f2t2yd.jpg'
     },
     phoneNumber:{
         type:String,
