@@ -12,6 +12,7 @@ router.post('/refreshToken',authContr.generatorAccessToken);
 router.post('/forgotPass',authContr.forgotPass)
 router.post('/resetPass',authVerify,authContr.resetPassword);
 router.post('/resetLink',authContr.resetLink)
+router.post('/googleLogin',authContr.loginWithGoogle)
 
 
 

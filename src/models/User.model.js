@@ -21,13 +21,9 @@ const UserModel = new Schema({
         type:String,
         required:true,
         minlength:6,
-        maxlength:8
     },
     address:{
         type:String,
-        minlength:6,
-        maxlength:200,
-        required:true
     },
     role:{
         type:Number,
@@ -36,17 +32,12 @@ const UserModel = new Schema({
     isVerified:{
         type:Boolean
     },
-    emailToken:{
-        type:String
-    },
     avatar:{
         type:String,
         default:'https://res.cloudinary.com/dipro/image/upload/v1645001565/avatar/default-avatar-profile-icon-vector-social-media-user-portrait-176256935_f2t2yd.jpg'
     },
     phoneNumber:{
         type:String,
-        required:true,
-        length:14
     }
 },{timestamps:true})
 

@@ -33,4 +33,15 @@ async function verifyEmailMiddleWare(req,res,next){
         res.status(500).send({message:"Server error"})
     }
 }
-module.exports = {authVerify,verifyEmailMiddleWare}
+
+async function isAdmin(req,res,next){
+    try {
+        const user = await User.findOne({_id:req.user.id})
+        if(user.role !== 1) return res.status(400).send({message:"Admin resource . Access denied!!!"})
+        next()
+
+    } catch (err) {
+        res.status(500).send({message:"Server error"})
+    }
+}
+module.exports = {authVerify,verifyEmailMiddleWare, isAdmin}
