@@ -10,7 +10,7 @@ router.post('/logout',authContr.logout);
 router.post('/verify-email',authContr.verifyEmail);
 router.post('/refreshToken',authContr.generatorAccessToken);
 router.post('/forgotPass',authContr.forgotPass)
-router.post('/resetPass',authVerify,authContr.resetPassword);
+router.post('/resetPass',authContr.resetPassword);
 router.post('/resetLink',authContr.resetLink)
 router.post('/googleLogin',authContr.loginWithGoogle)
 

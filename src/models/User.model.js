@@ -25,6 +25,12 @@ const UserModel = new Schema({
     address:{
         type:String,
     },
+    city:{
+        type:String
+    },
+    country:{
+       type:String
+    },
     role:{
         type:Number,
         default:0

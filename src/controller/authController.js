@@ -14,8 +14,11 @@ const clientId = new OAuth2(process.env.CLIENT_ID);
 const authController = {
   signUp: async function (req, res, next) {
     try {
-      const { name, email, address, password, phoneNumber } = req.body;
-      const { error } = registerSchema(req.body);
+      const { name, email, address, password, phoneNumber, country, city } =
+        req.body;
+      const validatedFields = { email, password, name };
+      console.log(validatedFields);
+      const { error } = registerSchema(validatedFields);
       if (error)
         return res.status(400).json({ ...error?.details[0], status: 400 });
 
@@ -23,13 +26,15 @@ const authController = {
       if (chẹckExist) {
         return res
           .status(409)
-          .json({ error: { message: "Email is existed!!!" }, status: 409 });
+          .json({ message: "Email is existed!!!", status: 409 });
       }
       const user = new User({
         name,
         email,
-        address:address?address:"",
-        phoneNumber:phoneNumber?phoneNumber:"",
+        address: address ? address : "",
+        phoneNumber: phoneNumber ? phoneNumber : "",
+        country: country ? country : "",
+        city: city ? city : "",
         password,
         isVerified: false,
         role: 0,
@@ -48,7 +53,7 @@ const authController = {
         },
       });
     } catch (error) {
-      next(error);
+      res.status(500).send({ message: error });
     }
   },
   verifyEmail: async function (req, res, next) {
@@ -58,20 +63,18 @@ const authController = {
         token,
         process.env.ACTIVE_EMAIL_TOKEN,
         async function (err, data) {
-          if (err)
+          if (err) {
             return res
               .status(401)
               .json({ message: "token expired or token is not right" });
+          }
           console.log(data.id);
           const checkisVerified = await User.findOne({ _id: data.id });
-
           if (checkisVerified._doc.isVerified) {
-            res
-              .status(200)
-              .json({
-                message:
-                  "Your account verified successfully before!! Please login",
-              });
+            return res.status(200).json({
+              message:
+                "Your account verified successfully before!! Please login",
+            });
           }
           await User.findByIdAndUpdate(
             { _id: data.id },
@@ -84,25 +87,33 @@ const authController = {
         }
       );
     } catch (error) {
-      res.status(500).send({ message: error });
+      res.status(500).send({ message: error.message });
     }
   },
   resetLink: async function (req, res, next) {
-    const { email } = req.body;
+    try {
+      const { email } = req.body;
 
-    const checkMail = await User.findOne({ email });
-    if (!checkMail) {
-      return res.status(200).json("Your email account not existed!!!");
-    }
-    if (checkMail._doc.isVerified) {
-      res
-        .status(200)
-        .json({ message: "Your account have been verified. Please log in!!!" });
-    } else {
+      const checkMail = await User.findOne({ email });
+      if (!checkMail) {
+        return res
+          .status(400)
+          .json({ message: "Your email account not existed!!!" });
+      }
+      if (checkMail._doc.isVerified) {
+        return res
+          .status(200)
+          .json({
+            message: "Your account have been verified. Please log in!!!",
+          });
+      }
+
       const token = createActiveMailToken({ id: checkMail._doc._id });
       const url = `${process.env.URL_CLIENT}/auth/verify-email/${token}`;
       sendEmail.emailActive(email, url, "Verify your email here");
       res.status(200).json({ message: "Re send link successfully!!!" });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
     }
   },
   logout: async function (req, res, next) {
@@ -118,23 +129,16 @@ const authController = {
       const userLogin = req.body;
       const { error } = loginSchema(userLogin);
       if (error)
-        return res.status(200).json({ ...error?.details[0], status: 400 });
+        return res.status(400).json({ ...error?.details[0], status: 400 });
 
       const user = await User.findOne({ email: userLogin.email });
-      if (!user) {
-        return res
-          .status(200)
-          .json({ error: { message: "Email is not existed!!!" }, status: 200 });
-      }
       const { password, ...userObj } = user._doc;
       const isValidatePassword = await bcrypt.compare(
         userLogin.password,
         user.password
       );
       if (!isValidatePassword) {
-        return res
-          .status(200)
-          .json({ error: { message: "Invalid Password!!!" }, status: 200 });
+        return res.status(400).json({ message: "Invalid Password!!!" });
       }
       const accessToken = createAccessToken({ id: user._doc._id });
       const refreshToken = createRefreshToken({ id: user._doc._id });
@@ -146,17 +150,18 @@ const authController = {
       });
       res.status(200).json({
         message: "Sign In successfully!!!",
-        data: userObj,
+        user: userObj,
         accessToken,
         refreshToken,
         status: 200,
       });
     } catch (error) {
-      next(error);
+      res.status(500).json({ message: error });
     }
   },
   generatorAccessToken: async function (req, res, next) {
-    const token = req.cookies.refreshToken;
+    // const token = req.cookies.refreshToken;
+    const token = req.body.refreshToken;
     console.log(token);
     if (!token)
       return res.status(401).json({ message: "Please log in to access" });
@@ -169,9 +174,8 @@ const authController = {
         console.log(user);
         const accessToken = createAccessToken({ id: data.id });
         res.status(200).json({
-          message: "Sign In successfully!!!",
+          message: "Get token successfully!!!",
           accessToken,
-          user,
           status: 200,
         });
         next();
@@ -191,17 +195,23 @@ const authController = {
   },
   resetPassword: async function (req, res, next) {
     try {
-      const { password } = req.body;
-
+      const { password,token } = req.body;
+      console.log(token)
+      if(!token){
+        return res.status(400).json({
+          message:
+            "Invalid Auth!",
+        });
+      }
+      
+      const decoded = jwt.verify(token,process.env.TOKEN_SECRET)
+      if(!decoded) return res.status(400).json({message:'Can not verify the user!'})
       console.log(password.length);
-
       if (!password || password.length < 6 || password.length > 15)
-        return res
-          .status(400)
-          .json({
-            message:
-              "Please fill in a new password or password less than 15 characters and more than 6 characters!",
-          });
+        return res.status(400).json({
+          message:
+            "Please fill in a new password or password less than 15 characters and more than 6 characters!",
+        });
       const salt = await bcrypt.genSalt(10);
       const hashPasswordReset = await bcrypt.hash(password, salt);
       console.log(req.user);
@@ -231,12 +241,12 @@ const authController = {
       const password = email + process.env.GOOGLE_SECRET;
 
       const hashPass = await bcrypt.hash(password, 12);
-      console.log(email_verified)
+      console.log(email_verified);
       if (!email_verified)
         return res.status(400).json({ message: "Email is not verified!!!" });
 
       const user = await User.findOne({ email });
-      
+
       if (user) {
         const accessToken = createAccessToken({ id: user._doc._id });
         const refreshToken = createRefreshToken({ id: user._doc._id });
@@ -246,39 +256,53 @@ const authController = {
           path: "/auth/refreshToken",
           maxAge: 90 * 24 * 60 * 60 * 1000, // 3 months
         });
-        res.status(200).json({data:user._doc,refreshToken,accessToken,message:"Login successfully"})
-      } else {
-          const newUsers = new User({
-              name,
-              email,
-              password:hashPass,
-              phoneNumber:"",
-              address:"",
-              avatar:picture,
-              isVerified:email_verified,
-              role:0
-          })
-          const saveUser = await newUsers.save()
-          const accessToken = createAccessToken({ id: saveUser._id });
-          const refreshToken = createRefreshToken({ id: saveUser._id });
-          // set cookies
-          await res.cookie("refreshToken", refreshToken, {
-            httpOnly: true,
-            path: "/auth/refreshToken",
-            maxAge: 90 * 24 * 60 * 60 * 1000, // 3 months
+        res
+          .status(200)
+          .json({
+            data: user._doc,
+            refreshToken,
+            accessToken,
+            message: "Login successfully",
           });
-          res.status(200).json({user:saveUser,accessToken,refreshToken,message:"Login successfully!!!"})
+      } else {
+        const newUsers = new User({
+          name,
+          email,
+          password: hashPass,
+          phoneNumber: "",
+          address: "",
+          avatar: picture,
+          isVerified: email_verified,
+          role: 0,
+        });
+        const saveUser = await newUsers.save();
+        const accessToken = createAccessToken({ id: saveUser._id });
+        const refreshToken = createRefreshToken({ id: saveUser._id });
+        // set cookies
+        await res.cookie("refreshToken", refreshToken, {
+          httpOnly: true,
+          path: "/auth/refreshToken",
+          maxAge: 90 * 24 * 60 * 60 * 1000, // 3 months
+        });
+        res
+          .status(200)
+          .json({
+            user: saveUser,
+            accessToken,
+            refreshToken,
+            message: "Login successfully!!!",
+          });
       }
       console.log(verify);
     } catch (error) {
-        console.log(error)
-      res.status(500).json({message:error.message});
+      console.log(error);
+      res.status(500).json({ message: error.message });
     }
   },
 };
 const createAccessToken = (payload) => {
   return jwt.sign(payload, process.env.TOKEN_SECRET, {
-    expiresIn: "1d",
+    expiresIn: "3d",
   });
 };
 

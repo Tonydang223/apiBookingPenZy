@@ -9,9 +9,9 @@ async function authVerify(req,res,next){
          console.log(token)
         if(!token) return res.status(401).send({message:"Unauthorized"})
      
-        jwt.verify(token,process.env.TOKEN_SECRET,function(error,data){
+        jwt.verify(token,process.env.TOKEN_SECRET,async function(error,data){
             console.log(error,data);
-            if(error) return res.status(403).send({message:error})
+            if(error) return res.status(403).json({message:"Token is not right or expired. You should reset mail forgot password again"})
             req.user = data
             next()
         })
@@ -24,10 +24,14 @@ async function authVerify(req,res,next){
 async function verifyEmailMiddleWare(req,res,next){
     try {
         const user = await User.findOne({email:req.body.email})
-        if(user.isVerified){
-            next()
+        if(!user){
+            res.status(400).send({message:"Can not find account!!!"})
         }else{
-            res.status(400).send({message:"You need you verify your email account!!!"})
+            if(user.isVerified){
+                next()
+            }else{
+                res.status(400).send({message:"You need you verify your email account!!!"})
+            }
         }
     } catch (err) {
         res.status(500).send({message:"Server error"})
